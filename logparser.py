@@ -1,46 +1,20 @@
 import os
 import shlex
 from configuration import Configuration
-from traverse import TraverseSource
+from traverse import TraverseSource, TraverseLog
 
 class LogParser(object):
     def __init__(self):
         config = Configuration()
-        self.data = config.getConfDict()
-        traverse = TraverseSource(self.data)
-        self.log = ()
-        self.source = traverse.getSourceTree()
-        self.parse()
+        configDict = config.getConfDict()
+        traverseSource = TraverseSource()
+        self.traverseLog = TraverseLog()
+        self.source = traverseSource.generateSource(configDict)
+        self.parse(configDict)
 
-    def generateLogDicts(self, log_fh):
-        current = []
-        search_for = self.data['search_for']
-        for line in log_fh:
-            # Only bother if it matches what we look for
-            if search_for in line:
-                if current:
-                    yield current
-                try:
-                    # break lines into a list
-                    brokenLog = shlex.split(line)
-                    # lookup for the correct column
-                    secBreak = brokenLog[self.data['data_column']].split(self.data['delimiter'])
-                    # since a few lines might not be the entry we ignore those
-                    try:
-                        # extract the source file and line
-                        intSecBreak = shlex.split(secBreak[0])
-                        intSecBreakP = \
-                        intSecBreak[self.data['sub_data_source_column']]
-                    except IndexError:
-                        continue
-                    current = [intSecBreakP, secBreak[-1]]
-                except ValueError:
-                    continue
-        yield current
-
-    def parse(self):
-        with open(self.data['log_file']) as filename:
-            self.log = list(self.generateLogDicts(filename))
+    def parse(self, config):
+        with open(config['log_file']) as filename:
+            self.log = list(self.traverseLog.generateLog(filename, config))
 
     def printOut(self):
         self.reportList(self.log)
